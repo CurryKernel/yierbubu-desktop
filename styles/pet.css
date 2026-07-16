@@ -10,7 +10,6 @@ html, body {
   background: transparent;
   overflow: hidden;
   user-select: none;
-  -webkit-app-region: drag;
 }
 
 #pet-wrapper {
@@ -68,39 +67,93 @@ html, body {
   pointer-events: none;
 }
 
-/* 宠物容器 */
+/* 宠物容器 — 响应所有鼠标事件 */
 #pet-container {
   width: 200px;
   height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
+  cursor: grab;
+}
+
+#pet-container:active {
+  cursor: grabbing;
 }
 
 #pet-gif {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+  pointer-events: none; /* 事件由容器统一处理 */
 }
 
 #pet-gif.pet-switching {
-  transform: scale(0.8);
+  transform: scale(0.85);
   opacity: 0.5;
-}
-
-#pet-container:active #pet-gif {
-  transform: scale(0.9);
-}
-
-/* 占位宠物 */
-.placeholder-pet {
-  transition: transform 0.3s ease;
 }
 
 /* 宠物大小变体 */
 .pet-size-small #pet-container { width: 140px; height: 140px; }
 .pet-size-medium #pet-container { width: 200px; height: 200px; }
 .pet-size-large #pet-container { width: 260px; height: 260px; }
+
+/* 右键菜单 */
+#context-menu {
+  position: fixed;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 6px 0;
+  min-width: 170px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  z-index: 9999;
+  display: none;
+  font-size: 14px;
+  backdrop-filter: blur(10px);
+  font-family: 'Microsoft YaHei', sans-serif;
+}
+
+#context-menu .menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #333;
+  transition: background 0.15s;
+  position: relative;
+}
+
+#context-menu .menu-item:hover {
+  background: #f5f5f5;
+}
+
+#context-menu .menu-separator {
+  height: 1px;
+  background: #eee;
+  margin: 4px 0;
+}
+
+#context-menu .sub-menu {
+  position: absolute;
+  left: 100%;
+  top: -6px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 6px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  backdrop-filter: blur(10px);
+}
+
+#context-menu .sub-menu .menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #333;
+}
+
+#context-menu .sub-menu .menu-item:hover {
+  background: #f5f5f5;
+}

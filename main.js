@@ -44,10 +44,12 @@ function createPetWindow(config = {}) {
 }
 
 function setupIPC() {
+  // 退出应用
   ipcMain.handle('close-app', () => {
     app.quit();
   });
 
+  // 打开设置窗口
   ipcMain.handle('open-settings', () => {
     if (settingsWindow) {
       settingsWindow.focus();
@@ -68,6 +70,7 @@ function setupIPC() {
     settingsWindow.on('closed', () => { settingsWindow = null; });
   });
 
+  // 双宠模式切换
   ipcMain.handle('toggle-second-pet', (event, enable) => {
     if (enable && !secondWindow) {
       secondWindow = createPetWindow({
@@ -83,8 +86,28 @@ function setupIPC() {
     return !!secondWindow;
   });
 
+  // 获取第二只宠物状态
   ipcMain.handle('get-second-pet-status', () => {
     return !!secondWindow;
+  });
+
+  // 拖动窗口
+  ipcMain.handle('move-window', (event, dx, dy) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const [x, y] = win.getPosition();
+      win.setPosition(x + dx, y + dy);
+    }
+  });
+
+  // 获取窗口位置
+  ipcMain.handle('get-window-position', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const [x, y] = win.getPosition();
+      return { x, y };
+    }
+    return { x: 0, y: 0 };
   });
 }
 

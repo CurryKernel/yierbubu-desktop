@@ -11,16 +11,15 @@ const PetController = (() => {
   const petGif = document.getElementById('pet-gif');
   let lastGifPath = '';
 
-  function getRandomInterval(minSec, maxSec) {
-    return Math.floor((minSec + Math.random() * (maxSec - minSec)) * 1000);
-  }
-
+  // 时间间隔（毫秒）
   function getStateInterval() {
-    return getRandomInterval(3 * 60, 8 * 60);
+    // 3-8 分钟
+    return (3 + Math.random() * 5) * 60 * 1000;
   }
 
   function getCharacterInterval() {
-    return getRandomInterval(30 * 60, 60 * 60);
+    // 30-60 分钟
+    return (30 + Math.random() * 30) * 60 * 1000;
   }
 
   function getRandomState() {
@@ -31,15 +30,12 @@ const PetController = (() => {
   }
 
   function getGifPath(character, state) {
-    // 从 manifest 获取该分类下所有可用 GIF
     const files = GIFManifest[character] && GIFManifest[character][state];
     if (!files || files.length === 0) return null;
 
-    // 随机选择，避免重复
     let idx = Math.floor(Math.random() * files.length);
     let gifPath = `assets/${character}/${state}/${files[idx]}`;
 
-    // 避免连续显示同一张
     if (gifPath === lastGifPath && files.length > 1) {
       idx = (idx + 1) % files.length;
       gifPath = `assets/${character}/${state}/${files[idx]}`;
@@ -50,32 +46,35 @@ const PetController = (() => {
 
   function updatePetImage(character, state, animate = true) {
     const gifPath = getGifPath(character, state);
-
-    if (!gifPath) {
-      console.warn(`No GIFs for ${character}/${state}`);
-      return;
-    }
+    if (!gifPath) return;
 
     lastGifPath = gifPath;
 
-    if (animate) {
-      petGif.classList.add('pet-switching');
-      setTimeout(() => {
-        petGif.src = gifPath;
-        petGif.classList.remove('pet-switching');
-      }, 150);
-    } else {
+    function apply() {
       petGif.src = gifPath;
     }
 
-    petGif.onerror = () => {
-      console.warn(`Failed to load: ${gifPath}`);
-      petGif.style.display = 'none';
-    };
+    if (animate) {
+      petGif.style.opacity = '0.3';
+      petGif.style.transform = 'scale(0.85)';
+      setTimeout(() => {
+        apply();
+        petGif.style.opacity = '1';
+        petGif.style.transform = 'scale(1)';
+      }, 200);
+    } else {
+      apply();
+    }
 
-    petGif.onload = () => {
-      petGif.style.display = 'block';
+    petGif.onerror = () => {
+      // 静默处理加载失败
+      console.debug('GIF load failed:', gifPath);
     };
+  }
+
+  function scheduleNextState() {
+    clearTimeout(stateTimer);
+    stateTimer = setTimeout(switchState, getStateInterval());
   }
 
   function switchState() {
@@ -84,8 +83,14 @@ const PetController = (() => {
       currentState = newState;
       updatePetImage(currentCharacter, currentState);
     }
-    clearTimeout(stateTimer);
-    stateTimer = setTimeout(switchState, getStateInterval());
+    scheduleNextState();
+  }
+
+  function scheduleNextCharacter() {
+    clearTimeout(characterTimer);
+    if (isAutoCharacter) {
+      characterTimer = setTimeout(switchCharacter, getCharacterInterval());
+    }
   }
 
   function switchCharacter() {
@@ -93,8 +98,7 @@ const PetController = (() => {
     const idx = CHARACTERS.indexOf(currentCharacter);
     const nextChar = CHARACTERS[(idx + 1) % CHARACTERS.length];
     setCharacterInternal(nextChar);
-    clearTimeout(characterTimer);
-    characterTimer = setTimeout(switchCharacter, getCharacterInterval());
+    scheduleNextCharacter();
   }
 
   function setCharacterInternal(char) {
@@ -135,26 +139,15 @@ const PetController = (() => {
       petWrapper.classList.add(`pet-size-${settings.petSize}`);
     }
 
-    stateTimer = setTimeout(switchState, getStateInterval());
+    scheduleNextState();
+    scheduleNextCharacter();
 
-    if (isAutoCharacter) {
-      characterTimer = setTimeout(switchCharacter, getCharacterInterval());
-    }
-
-    console.log(`Pet initialized: ${currentCharacter} in ${currentState} state`);
+    console.log(`Pet ready: ${currentCharacter} / ${currentState}`);
   }
 
   function getCurrentCharacter() { return currentCharacter; }
   function getCurrentState() { return currentState; }
   function getIsAutoCharacter() { return isAutoCharacter; }
 
-  return {
-    init,
-    switchState,
-    switchCharacter,
-    setCharacter,
-    getCurrentCharacter,
-    getCurrentState,
-    getIsAutoCharacter,
-  };
+  return { init, setCharacter, getCurrentCharacter, getCurrentState, getIsAutoCharacter };
 })();

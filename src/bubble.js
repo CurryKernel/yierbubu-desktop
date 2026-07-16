@@ -8,16 +8,14 @@ const BubbleSystem = (() => {
   let hideTimeout = null;
 
   function show(text, duration = 4000) {
-    if (hideTimeout) {
-      clearTimeout(hideTimeout);
-    }
+    if (!text) return;
+    if (hideTimeout) clearTimeout(hideTimeout);
+
     bubbleText.textContent = text;
     bubbleEl.classList.remove('bubble-hidden');
     bubbleEl.classList.add('bubble-show');
 
-    hideTimeout = setTimeout(() => {
-      hide();
-    }, duration);
+    hideTimeout = setTimeout(hide, duration);
   }
 
   function hide() {
@@ -25,21 +23,19 @@ const BubbleSystem = (() => {
     bubbleEl.classList.add('bubble-hidden');
   }
 
-  function getRandomMinutes(min, max) {
+  function randMinutes(min, max) {
     return (min + Math.random() * (max - min)) * 60 * 1000;
   }
 
   function scheduleTips() {
-    if (!SettingsManager.get('tipsEnabled')) return;
     clearTimeout(tipsTimer);
+    if (!SettingsManager.get('tipsEnabled')) return;
 
-    const freq = SettingsManager.get('tipsFrequency');
+    const freq = SettingsManager.get('tipsFrequency') || 'medium';
     let interval;
-    switch (freq) {
-      case 'low': interval = getRandomMinutes(20, 30); break;
-      case 'high': interval = getRandomMinutes(5, 10); break;
-      default: interval = getRandomMinutes(10, 15); break;
-    }
+    if (freq === 'low') interval = randMinutes(20, 30);
+    else if (freq === 'high') interval = randMinutes(5, 10);
+    else interval = randMinutes(10, 15);
 
     tipsTimer = setTimeout(() => {
       show(QuotesDB.getRandomTip(), 4000);
@@ -48,39 +44,43 @@ const BubbleSystem = (() => {
   }
 
   function scheduleWaterReminder() {
-    if (!SettingsManager.get('waterReminderEnabled')) return;
     clearTimeout(waterTimer);
+    if (!SettingsManager.get('waterReminderEnabled')) return;
 
-    const interval = SettingsManager.get('waterInterval') * 60 * 1000;
+    const minutes = SettingsManager.get('waterInterval') || 45;
     waterTimer = setTimeout(() => {
       show(QuotesDB.getWaterReminder(), 5000);
       scheduleWaterReminder();
-    }, interval);
+    }, minutes * 60 * 1000);
   }
 
   function scheduleDailyQuotes() {
-    if (!SettingsManager.get('tipsEnabled')) return;
+    // 清除旧定时器
     quoteTimers.forEach(t => clearTimeout(t));
     quoteTimers = [];
 
+    if (!SettingsManager.get('tipsEnabled')) return;
+
     const count = SettingsManager.get('dailyQuotesCount') || 5;
-    const dailyQuoteData = QuotesDB.getDailyQuotes(count);
+    const quotes = QuotesDB.getDailyQuotes(count);
+
+    if (quotes.length === 0) return;
 
     const now = new Date();
-    const dayStart = new Date(now);
-    dayStart.setHours(9, 0, 0, 0);
-    const dayEnd = new Date(now);
-    dayEnd.setHours(22, 0, 0, 0);
+    const today9am = new Date(now);
+    today9am.setHours(9, 0, 0, 0);
+    const today10pm = new Date(now);
+    today10pm.setHours(22, 0, 0, 0);
 
-    const totalMinutes = (dayEnd - dayStart) / 60000;
-    const intervalMinutes = totalMinutes / (dailyQuoteData.length + 1);
+    const totalMs = today10pm - today9am;
+    const intervalMs = totalMs / (quotes.length + 1);
 
-    dailyQuoteData.forEach((quote, i) => {
-      const delayMinutes = intervalMinutes * (i + 1);
-      const quoteTime = new Date(dayStart.getTime() + delayMinutes * 60000);
-      const delay = quoteTime - now;
+    quotes.forEach((quote, i) => {
+      const fireTime = new Date(today9am.getTime() + intervalMs * (i + 1));
+      const delay = fireTime - now;
 
-      if (delay > 0) {
+      // 只设置未来的定时器
+      if (delay > 1000) {
         const timer = setTimeout(() => {
           show(quote.text, 6000);
         }, delay);
@@ -90,9 +90,6 @@ const BubbleSystem = (() => {
   }
 
   function init() {
-    const settings = SettingsManager.load();
-
-    // 初始问候
     const hour = new Date().getHours();
     let greeting;
     if (hour < 9) greeting = '一二布布，早上好！☀️';
@@ -102,18 +99,18 @@ const BubbleSystem = (() => {
     else if (hour < 22) greeting = '晚上好！';
     else greeting = '夜深了，一二布布还在哦~';
 
-    setTimeout(() => show(greeting, 4000), 1000);
+    setTimeout(() => show(greeting, 4000), 1500);
 
     scheduleTips();
     scheduleWaterReminder();
     scheduleDailyQuotes();
 
-    // 每小时检查名言是否需要跨日刷新
+    // 每小时刷新名言调度
     setInterval(() => {
-      const newDay = new Date().toDateString();
-      const storedDay = localStorage.getItem('yierbubu-quote-date');
-      if (newDay !== storedDay) {
-        localStorage.setItem('yierbubu-quote-date', newDay);
+      const today = new Date().toDateString();
+      const stored = localStorage.getItem('yierbubu-quote-date');
+      if (today !== stored) {
+        localStorage.setItem('yierbubu-quote-date', today);
         scheduleDailyQuotes();
       }
     }, 60 * 60 * 1000);
