@@ -4,7 +4,7 @@
   "description": "一二布布桌面悬浮宠物",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "ELECTRON_RUN_AS_NODE= electron .",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
     "build:all": "electron-builder --win --mac"
@@ -12,7 +12,7 @@
   "author": "CurryKernel",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0",
+    "electron": "^28.3.3",
     "electron-builder": "^24.9.0"
   }
 }
