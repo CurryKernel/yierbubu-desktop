@@ -1,8 +1,6 @@
-// 手动构建便携版 exe — 不依赖 electron-builder 下载任何东西
-// 直接使用 node_modules/electron 中的已安装二进制文件
+// 构建便携版 exe — 从 node_modules/electron 直接复制
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const DIST_DIR = path.join(ROOT, 'dist', 'yierbubu-desktop');
@@ -21,43 +19,61 @@ console.log('复制 Electron 运行文件...');
 const electronExe = path.join(ELECTRON_DIR, 'electron.exe');
 fs.copyFileSync(electronExe, path.join(DIST_DIR, '一二布布桌面宠物.exe'));
 
-// 复制必要的 DLL 和资源文件
-const copyFiles = [
-  'chrome_100_percent.pak', 'chrome_200_percent.pak',
-  'icudtl.dat', 'resources.pak', 'snapshot_blob.bin',
-  'v8_context_snapshot.bin', 'vk_swiftshader_icd.json',
-  'vulkan-1.dll', 'libEGL.dll', 'libGLESv2.dll',
+// 必要的 Electron 资源文件
+const requiredFiles = [
+  'chrome_100_percent.pak',
+  'chrome_200_percent.pak',
+  'icudtl.dat',
+  'resources.pak',
+  'snapshot_blob.bin',
+  'v8_context_snapshot.bin',
+  'vk_swiftshader_icd.json',
+  'vulkan-1.dll',
+  'libEGL.dll',
+  'libGLESv2.dll',
+  'ffmpeg.dll',
 ];
-copyFiles.forEach(f => {
+requiredFiles.forEach(f => {
   const src = path.join(ELECTRON_DIR, f);
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, path.join(DIST_DIR, f));
+  } else {
+    console.log('  警告: 未找到 ' + f);
   }
 });
 
-// 复制 locales (可选，减小体积)
+// 复制 locales (中文+英文)
 const localesDir = path.join(DIST_DIR, 'locales');
 fs.mkdirSync(localesDir, { recursive: true });
 const localesSrc = path.join(ELECTRON_DIR, 'locales');
 if (fs.existsSync(localesSrc)) {
-  const zhFiles = fs.readdirSync(localesSrc).filter(f => f.startsWith('zh') || f === 'en-US.pak');
+  const zhFiles = fs.readdirSync(localesSrc).filter(f =>
+    f.startsWith('zh') || f === 'en-US.pak'
+  );
   zhFiles.forEach(f => {
     fs.copyFileSync(path.join(localesSrc, f), path.join(localesDir, f));
   });
 }
 
-// 3. 创建 app 资源目录 (ASAR 替代 — 直接复制)
+// 3. 复制 resources 目录（含 default_app.asar）
+const resourcesSrc = path.join(ELECTRON_DIR, 'resources');
+const resourcesDest = path.join(DIST_DIR, 'resources');
+fs.mkdirSync(resourcesDest, { recursive: true });
+
+// 复制 default_app.asar
+const defaultAppAsar = path.join(resourcesSrc, 'default_app.asar');
+if (fs.existsSync(defaultAppAsar)) {
+  fs.copyFileSync(defaultAppAsar, path.join(resourcesDest, 'default_app.asar'));
+  console.log('复制 default_app.asar');
+}
+
+// 4. 创建 app 资源目录
 console.log('复制应用文件...');
-const resourcesDir = path.join(DIST_DIR, 'resources');
-fs.mkdirSync(resourcesDir, { recursive: true });
-const appDir = path.join(resourcesDir, 'app');
+const appDir = path.join(resourcesDest, 'app');
 fs.mkdirSync(appDir, { recursive: true });
 
 // 复制所有应用文件
-const appFiles = [
-  'main.js', 'preload.js', 'index.html', 'settings.html',
-  'package.json', 'electron-builder.yml',
-];
+const appFiles = ['main.js', 'preload.js', 'index.html', 'settings.html'];
 appFiles.forEach(f => {
   const src = path.join(ROOT, f);
   if (fs.existsSync(src)) {
@@ -66,39 +82,37 @@ appFiles.forEach(f => {
 });
 
 // 复制目录
-const copyDirs = ['src', 'styles', 'assets'];
-copyDirs.forEach(dir => {
+['src', 'styles', 'assets'].forEach(dir => {
   const src = path.join(ROOT, dir);
   const dest = path.join(appDir, dir);
   if (fs.existsSync(src)) {
     fs.cpSync(src, dest, { recursive: true });
+    console.log(`  复制 ${dir}/`);
   }
 });
 
-// 4. 创建 package.json 告诉 Electron 入口点
-const appPackageJson = {
+// 5. 创建 package.json
+fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({
   name: 'yierbubu-desktop',
   version: '1.0.0',
   main: 'main.js',
-};
-fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify(appPackageJson, null, 2));
+}, null, 2));
 
-// 5. 复制 node_modules (最小化 — 只需要 electron)
-console.log('设置 node_modules...');
-const nodeModulesDir = path.join(appDir, 'node_modules');
-fs.mkdirSync(nodeModulesDir, { recursive: true });
-// 不需要复制 electron npm 包，因为它在 resources 外面
+// 6. 创建空的 node_modules（确保 electron 从内置加载）
+fs.mkdirSync(path.join(appDir, 'node_modules'), { recursive: true });
 
-// 6. 统计大小
+// 7. 创建启动批处理
+fs.writeFileSync(path.join(DIST_DIR, '启动宠物.bat'),
+  '@echo off\r\nstart "" "%~dp0一二布布桌面宠物.exe"');
+
+// 8. 统计
 console.log('\n=== 构建完成 ===');
-const distPath = path.join(ROOT, 'dist', 'yierbubu-desktop');
-const exePath = path.join(distPath, '一二布布桌面宠物.exe');
-console.log(`输出: ${distPath}`);
-console.log(`可执行文件: ${exePath}`);
+console.log(`输出: ${DIST_DIR}`);
+console.log(`可执行文件: ${path.join(DIST_DIR, '一二布布桌面宠物.exe')}`);
 
-// 计算大小
 function getDirSize(dir) {
   let size = 0;
+  if (!fs.existsSync(dir)) return 0;
   const files = fs.readdirSync(dir, { withFileTypes: true });
   files.forEach(f => {
     const p = path.join(dir, f.name);
@@ -109,11 +123,4 @@ function getDirSize(dir) {
 }
 const totalSize = getDirSize(DIST_DIR);
 console.log(`总大小: ${(totalSize / 1024 / 1024).toFixed(0)} MB`);
-
-// 7. 创建启动批处理（可选）
-const batContent = `@echo off
-start "" "%~dp0一二布布桌面宠物.exe" "%~dp0resources/app"
-`;
-fs.writeFileSync(path.join(DIST_DIR, '启动宠物.bat'), batContent);
-
-console.log('\n双击 "一二布布桌面宠物.exe" 或运行 "启动宠物.bat" 来启动宠物！');
+console.log('\n双击 exe 或运行 启动宠物.bat 启动！');

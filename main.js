@@ -1,4 +1,34 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+// 修复: 如果环境变量中 ELECTRON_RUN_AS_NODE=1，清除它
+// 这解决了从某些shell环境启动时的兼容性问题
+if (process.env.ELECTRON_RUN_AS_NODE === '1') {
+  delete process.env.ELECTRON_RUN_AS_NODE;
+}
+
+// 确保 electron 内置模块正确加载
+let app, BrowserWindow, ipcMain, screen;
+try {
+  const electron = require('electron');
+  // electron 可能是内置API对象，也可能是npm包的字符串路径
+  if (typeof electron === 'string') {
+    // npm包路径 — 使用备用加载方式
+    const Module = require('module');
+    const builtinElectron = Module._load('electron', null, true);
+    app = builtinElectron.app;
+    BrowserWindow = builtinElectron.BrowserWindow;
+    ipcMain = builtinElectron.ipcMain;
+    screen = builtinElectron.screen;
+  } else {
+    app = electron.app;
+    BrowserWindow = electron.BrowserWindow;
+    ipcMain = electron.ipcMain;
+    screen = electron.screen;
+  }
+} catch (e) {
+  // 最后的备用方案
+  const electron = require('electron');
+  ({ app, BrowserWindow, ipcMain, screen } = electron);
+}
+
 const path = require('path');
 
 let mainWindow = null;
@@ -44,12 +74,10 @@ function createPetWindow(config = {}) {
 }
 
 function setupIPC() {
-  // 退出应用
   ipcMain.handle('close-app', () => {
     app.quit();
   });
 
-  // 打开设置窗口
   ipcMain.handle('open-settings', () => {
     if (settingsWindow) {
       settingsWindow.focus();
@@ -70,7 +98,6 @@ function setupIPC() {
     settingsWindow.on('closed', () => { settingsWindow = null; });
   });
 
-  // 双宠模式切换
   ipcMain.handle('toggle-second-pet', (event, enable) => {
     if (enable && !secondWindow) {
       secondWindow = createPetWindow({
@@ -86,12 +113,10 @@ function setupIPC() {
     return !!secondWindow;
   });
 
-  // 获取第二只宠物状态
   ipcMain.handle('get-second-pet-status', () => {
     return !!secondWindow;
   });
 
-  // 拖动窗口
   ipcMain.handle('move-window', (event, dx, dy) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) {
@@ -100,7 +125,6 @@ function setupIPC() {
     }
   });
 
-  // 获取窗口位置
   ipcMain.handle('get-window-position', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) {
@@ -108,6 +132,16 @@ function setupIPC() {
       return { x, y };
     }
     return { x: 0, y: 0 };
+  });
+
+  // 双宠对话交互
+  ipcMain.handle('pet-speak', (event, text) => {
+    // 广播给另一只宠物
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const other = (win === mainWindow) ? secondWindow : mainWindow;
+    if (other && !other.isDestroyed()) {
+      other.webContents.send('partner-speak', text);
+    }
   });
 }
 

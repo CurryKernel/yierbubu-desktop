@@ -7,4 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSecondPetStatus: () => ipcRenderer.invoke('get-second-pet-status'),
   moveWindow: (dx, dy) => ipcRenderer.invoke('move-window', dx, dy),
   getWindowPosition: () => ipcRenderer.invoke('get-window-position'),
+  petSpeak: (text) => ipcRenderer.invoke('pet-speak', text),
+  onPartnerSpeak: (callback) => {
+    ipcRenderer.on('partner-speak', (event, text) => callback(text));
+    return () => ipcRenderer.removeAllListeners('partner-speak');
+  },
 });
