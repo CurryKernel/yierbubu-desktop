@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一二布布 - 设置</title>
+  <link rel="stylesheet" href="styles/settings.css">
+</head>
+<body>
+  <div class="settings-container">
+    <h1>🐼 一二布布 · 设置 🐻</h1>
+
+    <div class="section">
+      <h3>角色设置</h3>
+      <div class="form-group">
+        <label>默认角色</label>
+        <select id="character">
+          <option value="auto">自动切换</option>
+          <option value="yier">一二 🐼</option>
+          <option value="bubu">布布 🐻</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>显示模式</label>
+        <select id="petMode">
+          <option value="single">单宠</option>
+          <option value="dual">双宠</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>提示设置</h3>
+      <div class="form-group">
+        <label>提示语开关</label>
+        <input type="checkbox" id="tipsEnabled" />
+      </div>
+      <div class="form-group">
+        <label>提示语频率</label>
+        <select id="tipsFrequency">
+          <option value="low">低（20-30分钟）</option>
+          <option value="medium">中（10-15分钟）</option>
+          <option value="high">高（5-10分钟）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>喝水提醒</h3>
+      <div class="form-group">
+        <label>喝水提醒开关</label>
+        <input type="checkbox" id="waterReminderEnabled" />
+      </div>
+      <div class="form-group">
+        <label>提醒间隔</label>
+        <select id="waterInterval">
+          <option value="30">30 分钟</option>
+          <option value="45">45 分钟</option>
+          <option value="60">60 分钟</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>显示设置</h3>
+      <div class="form-group">
+        <label>宠物大小</label>
+        <select id="petSize">
+          <option value="small">小</option>
+          <option value="medium">中</option>
+          <option value="large">大</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>每天名言数量</label>
+        <input type="range" id="dailyQuotesCount" min="1" max="10" value="5" />
+        <span id="quotesCountLabel">5</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>系统设置</h3>
+      <div class="form-group">
+        <label>开机自启</label>
+        <input type="checkbox" id="autoStart" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="saveBtn">💾 保存设置</button>
+      <button id="resetBtn">🔄 恢复默认</button>
+      <button id="closeBtn">✕ 关闭</button>
+    </div>
+  </div>
+
+  <script src="src/settings.js"></script>
+  <script>
+    const settings = SettingsManager.load();
+
+    document.getElementById('character').value = settings.character;
+    document.getElementById('petMode').value = settings.petMode;
+    document.getElementById('tipsEnabled').checked = settings.tipsEnabled;
+    document.getElementById('tipsFrequency').value = settings.tipsFrequency;
+    document.getElementById('waterReminderEnabled').checked = settings.waterReminderEnabled;
+    document.getElementById('waterInterval').value = settings.waterInterval;
+    document.getElementById('petSize').value = settings.petSize;
+    document.getElementById('dailyQuotesCount').value = settings.dailyQuotesCount;
+    document.getElementById('quotesCountLabel').textContent = settings.dailyQuotesCount;
+    document.getElementById('autoStart').checked = settings.autoStart;
+
+    document.getElementById('dailyQuotesCount').addEventListener('input', (e) => {
+      document.getElementById('quotesCountLabel').textContent = e.target.value;
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const updates = {
+        character: document.getElementById('character').value,
+        petMode: document.getElementById('petMode').value,
+        tipsEnabled: document.getElementById('tipsEnabled').checked,
+        tipsFrequency: document.getElementById('tipsFrequency').value,
+        waterReminderEnabled: document.getElementById('waterReminderEnabled').checked,
+        waterInterval: parseInt(document.getElementById('waterInterval').value),
+        petSize: document.getElementById('petSize').value,
+        dailyQuotesCount: parseInt(document.getElementById('dailyQuotesCount').value),
+        autoStart: document.getElementById('autoStart').checked,
+      };
+      SettingsManager.save(updates);
+
+      if (window.electronAPI) {
+        window.electronAPI.toggleSecondPet(updates.petMode === 'dual');
+      }
+
+      alert('设置已保存！重新启动宠物后生效。');
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (confirm('确定恢复默认设置？')) {
+        SettingsManager.save(SettingsManager.DEFAULTS);
+        location.reload();
+      }
+    });
+
+    document.getElementById('closeBtn').addEventListener('click', () => {
+      window.close();
+    });
+  </script>
+</body>
+</html>

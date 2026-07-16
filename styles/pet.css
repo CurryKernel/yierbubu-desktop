@@ -1,0 +1,106 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+#pet-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+}
+
+/* 对话气泡 */
+#bubble {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid #ffb8c6;
+  border-radius: 16px;
+  padding: 8px 14px;
+  max-width: 200px;
+  min-width: 80px;
+  text-align: center;
+  font-size: 13px;
+  color: #333;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  word-break: break-word;
+}
+
+#bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #ffb8c6;
+}
+
+#bubble.bubble-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+#bubble.bubble-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 宠物容器 */
+#pet-container {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+#pet-gif {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+#pet-gif.pet-switching {
+  transform: scale(0.8);
+  opacity: 0.5;
+}
+
+#pet-container:active #pet-gif {
+  transform: scale(0.9);
+}
+
+/* 占位宠物 */
+.placeholder-pet {
+  transition: transform 0.3s ease;
+}
+
+/* 宠物大小变体 */
+.pet-size-small #pet-container { width: 140px; height: 140px; }
+.pet-size-medium #pet-container { width: 200px; height: 200px; }
+.pet-size-large #pet-container { width: 260px; height: 260px; }

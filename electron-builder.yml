@@ -1,0 +1,23 @@
+appId: com.yierbubu.desktop-pet
+productName: "一二布布桌面宠物"
+directories:
+  output: dist
+  buildResources: build
+files:
+  - main.js
+  - preload.js
+  - index.html
+  - settings.html
+  - src/**/*
+  - styles/**/*
+  - assets/**/*
+win:
+  target: nsis
+  icon: build/icon.ico
+mac:
+  target: dmg
+  icon: build/icon.icns
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
