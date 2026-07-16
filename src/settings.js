@@ -6,7 +6,7 @@ const SettingsManager = (() => {
     waterReminderEnabled: true,
     waterInterval: 45,
     tipsFrequency: 'medium',
-    petSize: 'medium',
+    petSize: 'small',
     dailyQuotesCount: 5,
     autoStart: false,
   };

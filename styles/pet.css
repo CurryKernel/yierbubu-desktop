@@ -136,7 +136,7 @@ html, body {
 }
 
 /* 宠物大小变体 */
-.pet-size-small #pet-container { width: 110px; height: 110px; }
+.pet-size-small #pet-container { width: 100px; height: 100px; }
 .pet-size-medium #pet-container { width: 140px; height: 140px; }
 .pet-size-large #pet-container { width: 180px; height: 180px; }
 

@@ -160,11 +160,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const c = document.getElementById('pet-container');
 
-  // 单击 → 冒泡
+  let clickTimer = null;
+
+  // 单击/双击判断
   c.addEventListener('click', (e) => {
     if (DragSystem.didDrag()) { DragSystem.resetDrag(); return; }
     if (e.button !== 0) return;
-    BubbleSystem.show(QuotesDB.getRandomTip(), 3000);
+
+    if (clickTimer) {
+      // 双击 → 换一个图案
+      clearTimeout(clickTimer);
+      clickTimer = null;
+      PetController.nextImage();
+      BubbleSystem.show('换个造型~', 2000);
+    } else {
+      clickTimer = setTimeout(() => {
+        clickTimer = null;
+        // 单击 → 随机冒泡
+        BubbleSystem.show(QuotesDB.getRandomTip(), 3000);
+      }, 300);
+    }
   });
 
   DragSystem.init();
