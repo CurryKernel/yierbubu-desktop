@@ -332,16 +332,118 @@ document.addEventListener('DOMContentLoaded', () => {
   PetController.init();
   BubbleSystem.init();
 
-  // 单击宠物 — 如果没拖动就互动
   const petContainer = document.getElementById('pet-container');
+  let clickTimer = null;
+
+  // 单击/双击判断
   petContainer.addEventListener('click', (e) => {
     if (DragSystem.didDrag()) {
       DragSystem.resetDrag();
       return;
     }
     if (e.button !== 0) return;
-    BubbleSystem.show(QuotesDB.getRandomTip(), 3000);
+
+    if (clickTimer) {
+      // 双击 — 打开快捷操作
+      clearTimeout(clickTimer);
+      clickTimer = null;
+      showQuickActions(e);
+    } else {
+      // 等待判断是单击还是双击
+      clickTimer = setTimeout(() => {
+        clickTimer = null;
+        // 单击 — 随机冒泡
+        BubbleSystem.show(QuotesDB.getRandomTip(), 3000);
+      }, 300);
+    }
   });
+
+  // 快捷操作面板
+  function showQuickActions(e) {
+    const settings = SettingsManager.load();
+    const actions = [
+      {
+        label: settings.petMode === 'dual' ? '👥 切换单宠' : '💕 开启双宠',
+        action: () => {
+          const newMode = settings.petMode === 'dual' ? 'single' : 'dual';
+          SettingsManager.save({ petMode: newMode });
+          if (window.electronAPI) window.electronAPI.toggleSecondPet(newMode === 'dual');
+          BubbleSystem.show(newMode === 'dual' ? '一二布布一起来啦！💕' : '切换为单宠模式~', 3000);
+        },
+      },
+      {
+        label: PetController.getCurrentCharacter() === 'yier' ? '🐻 切成布布' : '🐼 切成一二',
+        action: () => {
+          const newChar = PetController.getCurrentCharacter() === 'yier' ? 'bubu' : 'yier';
+          PetController.setCharacter(newChar);
+          BubbleSystem.show(newChar === 'yier' ? '一二来啦！🐼' : '布布来啦！🐻', 3000);
+        },
+      },
+      {
+        label: '⚙️ 设置面板',
+        action: () => {
+          if (window.electronAPI) window.electronAPI.openSettings();
+        },
+      },
+    ];
+
+    // 创建快捷操作浮层
+    const existing = document.querySelector('.quick-actions-panel');
+    if (existing) existing.remove();
+
+    const panel = document.createElement('div');
+    panel.className = 'quick-actions-panel';
+    panel.style.cssText = `
+      position: fixed;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 4px 0;
+      min-width: 160px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 9998;
+      font-size: 14px;
+      font-family: 'Microsoft YaHei', sans-serif;
+      backdrop-filter: blur(10px);
+    `;
+
+    actions.forEach((a, i) => {
+      const row = document.createElement('div');
+      row.textContent = a.label;
+      row.style.cssText = `
+        padding: 10px 16px;
+        cursor: pointer;
+        white-space: nowrap;
+        color: #333;
+        transition: background 0.15s;
+      `;
+      row.addEventListener('mouseenter', () => { row.style.background = '#fef0f3'; });
+      row.addEventListener('mouseleave', () => { row.style.background = 'transparent'; });
+      row.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        a.action();
+        panel.remove();
+      });
+      panel.appendChild(row);
+    });
+
+    // 位置计算
+    const maxX = window.innerWidth - 170;
+    const maxY = window.innerHeight - (actions.length * 40 + 20);
+    panel.style.left = Math.min(e.clientX, maxX) + 'px';
+    panel.style.top = Math.min(e.clientY, maxY) + 'px';
+
+    document.body.appendChild(panel);
+
+    // 点击其他地方关闭
+    const closePanel = (ev) => {
+      if (!panel.contains(ev.target)) {
+        panel.remove();
+        document.removeEventListener('click', closePanel);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closePanel), 100);
+  }
 
   DragSystem.init();
   ContextMenu.init();
