@@ -67,8 +67,9 @@ const PetController = (() => {
     }
 
     petGif.onerror = () => {
-      // 静默处理加载失败
-      console.debug('GIF load failed:', gifPath);
+      // GIF 加载失败 → 用角色特征图作为后备
+      petGif.src = `assets/${currentCharacter}/character.png`;
+      petGif.onerror = null; // 防止死循环
     };
   }
 

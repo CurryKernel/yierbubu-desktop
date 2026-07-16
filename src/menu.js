@@ -274,10 +274,43 @@ const PetInteraction = (() => {
   return { init, getExchange };
 })();
 
+// ===== 时间显示 =====
+const TimeDisplay = (() => {
+  let lastHourAnnounced = -1;
+
+  function update() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const el = document.getElementById('info-time');
+    if (el) el.textContent = `${hh}:${mm}`;
+
+    // 整点报时
+    const hour = now.getHours();
+    if (now.getMinutes() === 0 && hour !== lastHourAnnounced) {
+      lastHourAnnounced = hour;
+      const msgs = {
+        8: '一二说：早上八点啦！☀️', 9: '布布说：九点，开工咯~',
+        12: '一二说：十二点！吃午饭 🍚', 14: '布布说：下午两点💪',
+        18: '一二说：六点，下班啦🎉', 21: '布布说：九点，准备休息~',
+        22: '一二说：十点，该睡了🌙', 0: '布布说：午夜了😴',
+      };
+      const msg = msgs[hour] || `一二布布报时：${hour}点整~`;
+      setTimeout(() => BubbleSystem.show(msg, 5000), 500);
+    }
+  }
+
+  function init() {
+    update();
+    setInterval(update, 60000);
+  }
+  return { init };
+})();
+
 // ===== 启动 =====
 document.addEventListener('DOMContentLoaded', () => {
   SettingsManager.load();
-  WeatherSystem.init();
+  TimeDisplay.init();
   PetController.init();
   BubbleSystem.init();
 

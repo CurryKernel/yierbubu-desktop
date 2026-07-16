@@ -84,8 +84,8 @@ function setupIPC() {
       return;
     }
     settingsWindow = new BrowserWindow({
-      width: 420,
-      height: 520,
+      width: 460,
+      height: 600,
       resizable: false,
       title: '一二布布 - 设置',
       webPreferences: {
@@ -101,9 +101,10 @@ function setupIPC() {
   ipcMain.handle('toggle-second-pet', (event, enable) => {
     if (enable && !secondWindow) {
       secondWindow = createPetWindow({
-        x: screen.getPrimaryDisplay().workAreaSize.width - 550,
+        x: screen.getPrimaryDisplay().workAreaSize.width - 520,
         y: screen.getPrimaryDisplay().workAreaSize.height - 400,
       });
+      // 第二只宠物用不同角色，通过URL参数传递
       return true;
     } else if (!enable && secondWindow) {
       secondWindow.close();
