@@ -12,7 +12,11 @@ files:
   - styles/**/*
   - assets/**/*
 win:
-  target: nsis
+  target:
+    - target: nsis
+      arch: [x64]
+  signAndEditExecutable: false
+  signDlls: false
 mac:
   target: dmg
 nsis:
