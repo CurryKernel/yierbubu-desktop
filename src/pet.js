@@ -31,19 +31,31 @@ const PetController = (() => {
   }
 
   function getGifPath(character, state) {
-    // 路径格式: assets/yier/stand/stand_1.gif 等
-    // 随机选择1-8的索引
-    const idx = Math.floor(Math.random() * 8) + 1;
-    return `assets/${character}/${state}/${state}_${idx}.gif`;
+    // 从 manifest 获取该分类下所有可用 GIF
+    const files = GIFManifest[character] && GIFManifest[character][state];
+    if (!files || files.length === 0) return null;
+
+    // 随机选择，避免重复
+    let idx = Math.floor(Math.random() * files.length);
+    let gifPath = `assets/${character}/${state}/${files[idx]}`;
+
+    // 避免连续显示同一张
+    if (gifPath === lastGifPath && files.length > 1) {
+      idx = (idx + 1) % files.length;
+      gifPath = `assets/${character}/${state}/${files[idx]}`;
+    }
+
+    return gifPath;
   }
 
   function updatePetImage(character, state, animate = true) {
-    let gifPath = getGifPath(character, state);
+    const gifPath = getGifPath(character, state);
 
-    // 避免连续显示同一张
-    if (gifPath === lastGifPath) {
-      gifPath = getGifPath(character, state);
+    if (!gifPath) {
+      console.warn(`No GIFs for ${character}/${state}`);
+      return;
     }
+
     lastGifPath = gifPath;
 
     if (animate) {
@@ -57,28 +69,12 @@ const PetController = (() => {
     }
 
     petGif.onerror = () => {
+      console.warn(`Failed to load: ${gifPath}`);
       petGif.style.display = 'none';
-      const container = document.getElementById('pet-container');
-      if (!container.querySelector('.placeholder-pet')) {
-        const placeholder = document.createElement('div');
-        placeholder.className = 'placeholder-pet';
-        placeholder.style.cssText = `
-          width: 120px; height: 120px; border-radius: 50%;
-          background: ${currentCharacter === 'yier'
-            ? 'radial-gradient(circle at 40% 40%, #fff, #e8e8e8, #333 85%)'
-            : 'radial-gradient(circle at 40% 40%, #f5deb3, #d2a679, #8b6914 85%)'};
-          display: flex; align-items: center; justify-content: center;
-          font-size: 50px;
-        `;
-        placeholder.textContent = currentCharacter === 'yier' ? '🐼' : '🐻';
-        container.appendChild(placeholder);
-      }
     };
 
     petGif.onload = () => {
       petGif.style.display = 'block';
-      const placeholder = document.getElementById('pet-container').querySelector('.placeholder-pet');
-      if (placeholder) placeholder.remove();
     };
   }
 
