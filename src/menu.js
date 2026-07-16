@@ -48,19 +48,14 @@ const ContextMenu = (() => {
     const isAuto = PetController.getIsAutoCharacter();
     const charName = PetController.getCurrentCharacter() === 'yier' ? '一二 🐼' : '布布 🐻';
     const charLabel = isAuto ? `自动切换 (${charName})` : charName;
-    const curState = PetController.getCurrentState();
-    const stateNames = { stand: '站立', sit: '坐', lie: '趴下', cute: '撒娇' };
 
     return [
       {
-        label: `🖼️ 切换状态 (当前:${stateNames[curState]})`,
-        sub: [
-          { label: '🧍 站立',  action: () => PetController.forceState('stand') },
-          { label: '🪑 坐',    action: () => PetController.forceState('sit') },
-          { label: '😴 趴下',  action: () => PetController.forceState('lie') },
-          { label: '💕 撒娇',  action: () => PetController.forceState('cute') },
-          { label: '🎲 随机',  action: () => PetController.forceState('random') },
-        ],
+        label: '🖼️ 换一个图案',
+        action: () => {
+          PetController.nextImage();
+          hide();
+        },
       },
       {
         label: `🐼 角色：${charLabel}`,

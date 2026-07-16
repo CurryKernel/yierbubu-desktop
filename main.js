@@ -84,9 +84,9 @@ function setupIPC() {
       return;
     }
     settingsWindow = new BrowserWindow({
-      width: 460,
-      height: 600,
-      resizable: false,
+      width: 480,
+      height: 680,
+      resizable: true,
       title: '一二布布 - 设置',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),

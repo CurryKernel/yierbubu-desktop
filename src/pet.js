@@ -11,14 +11,15 @@ const PetController = (() => {
   const petGif = document.getElementById('pet-gif');
   let lastGifPath = '';
 
-  // 时间间隔（毫秒）
+  function getRandomInterval(minSec, maxSec) {
+    return Math.floor((minSec + Math.random() * (maxSec - minSec)) * 1000);
+  }
+
   function getStateInterval() {
-    // 3-8 分钟
     return (3 + Math.random() * 5) * 60 * 1000;
   }
 
   function getCharacterInterval() {
-    // 30-60 分钟
     return (30 + Math.random() * 30) * 60 * 1000;
   }
 
@@ -29,48 +30,74 @@ const PetController = (() => {
     return otherStates[Math.floor(Math.random() * otherStates.length)];
   }
 
-  function getGifPath(character, state) {
-    const files = GIFManifest[character] && GIFManifest[character][state];
-    if (!files || files.length === 0) return null;
+  // 获取角色的基础形象（character.png — 一二白色熊猫 / 布布棕色熊）
+  function getCharacterBase(character) {
+    return `assets/${character}/character.png`;
+  }
 
-    let idx = Math.floor(Math.random() * files.length);
-    let gifPath = `assets/${character}/${state}/${files[idx]}`;
+  // 随机选GIF
+  function getRandomGif(character) {
+    // 从所有状态中随机选一张GIF
+    const allGifs = [];
+    STATES.forEach(state => {
+      const files = GIFManifest[character] && GIFManifest[character][state];
+      if (files) files.forEach(f => allGifs.push({ state, file: f }));
+    });
+    if (allGifs.length === 0) return null;
 
-    if (gifPath === lastGifPath && files.length > 1) {
-      idx = (idx + 1) % files.length;
-      gifPath = `assets/${character}/${state}/${files[idx]}`;
+    let idx = Math.floor(Math.random() * allGifs.length);
+    let gifPath = `assets/${character}/${allGifs[idx].state}/${allGifs[idx].file}`;
+
+    if (gifPath === lastGifPath && allGifs.length > 1) {
+      idx = (idx + 1) % allGifs.length;
+      gifPath = `assets/${character}/${allGifs[idx].state}/${allGifs[idx].file}`;
     }
-
-    return gifPath;
+    return { path: gifPath, state: allGifs[idx].state };
   }
 
   function updatePetImage(character, state, animate = true) {
-    const gifPath = getGifPath(character, state);
-    if (!gifPath) return;
+    // 先显示角色基础形象确保视觉区分
+    const baseImg = getCharacterBase(character);
 
-    lastGifPath = gifPath;
-
-    function apply() {
-      petGif.src = gifPath;
+    // 尝试加载GIF
+    const files = GIFManifest[character] && GIFManifest[character][state];
+    let useGif = null;
+    if (files && files.length > 0) {
+      const idx = Math.floor(Math.random() * files.length);
+      let gifPath = `assets/${character}/${state}/${files[idx]}`;
+      if (gifPath === lastGifPath && files.length > 1) {
+        const idx2 = (idx + 1) % files.length;
+        gifPath = `assets/${character}/${state}/${files[idx2]}`;
+      }
+      useGif = gifPath;
     }
 
+    // 先显示基础形象
     if (animate) {
       petGif.style.opacity = '0.3';
-      petGif.style.transform = 'scale(0.85)';
-      setTimeout(() => {
-        apply();
-        petGif.style.opacity = '1';
-        petGif.style.transform = 'scale(1)';
-      }, 200);
-    } else {
-      apply();
+      petGif.style.transform = 'scale(0.9)';
     }
 
+    // 设置GIF（如果加载失败，自动回退到 character.png）
+    const targetSrc = useGif || baseImg;
+    lastGifPath = targetSrc;
+
     petGif.onerror = () => {
-      // GIF 加载失败 → 用角色特征图作为后备
-      petGif.src = `assets/${currentCharacter}/character.png`;
-      petGif.onerror = null; // 防止死循环
+      if (petGif.src !== baseImg) {
+        petGif.src = baseImg;
+        petGif.onerror = null;
+      }
     };
+
+    petGif.onload = () => {
+      if (animate) {
+        petGif.style.opacity = '1';
+        petGif.style.transform = 'scale(1)';
+      }
+    };
+
+    petGif.src = targetSrc;
+    currentState = state;
   }
 
   function scheduleNextState() {
@@ -81,8 +108,7 @@ const PetController = (() => {
   function switchState() {
     const newState = getRandomState();
     if (newState !== currentState) {
-      currentState = newState;
-      updatePetImage(currentCharacter, currentState);
+      updatePetImage(currentCharacter, newState);
     }
     scheduleNextState();
   }
@@ -105,8 +131,7 @@ const PetController = (() => {
   function setCharacterInternal(char) {
     if (char !== currentCharacter) {
       currentCharacter = char;
-      currentState = getRandomState();
-      updatePetImage(currentCharacter, currentState);
+      updatePetImage(currentCharacter, getRandomState());
     }
   }
 
@@ -121,6 +146,14 @@ const PetController = (() => {
     setCharacterInternal(char);
   }
 
+  // 换一个图案（从所有状态中随机选）
+  function nextImage() {
+    const gif = getRandomGif(currentCharacter);
+    if (gif) {
+      updatePetImage(currentCharacter, gif.state);
+    }
+  }
+
   function init() {
     const settings = SettingsManager.load();
 
@@ -132,8 +165,16 @@ const PetController = (() => {
       currentCharacter = settings.character;
     }
 
-    currentState = getRandomState();
-    updatePetImage(currentCharacter, currentState, false);
+    // 首次加载：显示角色基础形象，然后尝试GIF
+    const baseImg = getCharacterBase(currentCharacter);
+    petGif.src = baseImg;
+    petGif.onerror = null;
+
+    // 延迟加载GIF以替换基础形象
+    setTimeout(() => {
+      currentState = getRandomState();
+      updatePetImage(currentCharacter, currentState, false);
+    }, 500);
 
     const petWrapper = document.getElementById('pet-wrapper');
     if (settings.petSize) {
@@ -150,17 +191,5 @@ const PetController = (() => {
   function getCurrentState() { return currentState; }
   function getIsAutoCharacter() { return isAutoCharacter; }
 
-  // 手动强制切换状态（右键菜单用）
-  function forceState(state) {
-    if (state === 'random') {
-      currentState = getRandomState();
-    } else if (STATES.includes(state)) {
-      currentState = state;
-    }
-    updatePetImage(currentCharacter, currentState);
-    // 重置定时器
-    scheduleNextState();
-  }
-
-  return { init, setCharacter, forceState, getCurrentCharacter, getCurrentState, getIsAutoCharacter };
+  return { init, setCharacter, nextImage, getCurrentCharacter, getCurrentState, getIsAutoCharacter };
 })();
