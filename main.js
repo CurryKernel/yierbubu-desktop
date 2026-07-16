@@ -37,7 +37,7 @@ let settingsWindow = null;
 
 const PET_WINDOW_CONFIG = {
   width: 200,
-  height: 240,
+  height: 220,
   transparent: true,
   alwaysOnTop: true,
   frame: false,
