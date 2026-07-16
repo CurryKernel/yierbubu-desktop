@@ -6,7 +6,6 @@ const DragSystem = (() => {
 
   function init() {
     const petContainer = document.getElementById('pet-container');
-
     petContainer.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
       isDragging = true;
@@ -15,7 +14,6 @@ const DragSystem = (() => {
       startY = e.screenY;
       e.preventDefault();
     });
-
     document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       const dx = e.screenX - startX;
@@ -27,15 +25,11 @@ const DragSystem = (() => {
         startY = e.screenY;
       }
     });
-
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
+    document.addEventListener('mouseup', () => { isDragging = false; });
   }
 
   function didDrag() { return hasMoved; }
   function resetDrag() { hasMoved = false; }
-
   return { init, didDrag, resetDrag };
 })();
 
@@ -45,9 +39,7 @@ const ContextMenu = (() => {
   let subMenuEl = null;
 
   function getMenuEl() {
-    if (!menuEl) {
-      menuEl = document.getElementById('context-menu');
-    }
+    if (!menuEl) menuEl = document.getElementById('context-menu');
     return menuEl;
   }
 
@@ -55,15 +47,27 @@ const ContextMenu = (() => {
     const settings = SettingsManager.load();
     const isAuto = PetController.getIsAutoCharacter();
     const charName = PetController.getCurrentCharacter() === 'yier' ? '一二 🐼' : '布布 🐻';
-    const charLabel = isAuto ? `自动 (当前:${charName})` : charName;
+    const charLabel = isAuto ? `自动切换 (${charName})` : charName;
+    const curState = PetController.getCurrentState();
+    const stateNames = { stand: '站立', sit: '坐', lie: '趴下', cute: '撒娇' };
 
     return [
       {
+        label: `🖼️ 切换状态 (当前:${stateNames[curState]})`,
+        sub: [
+          { label: '🧍 站立',  action: () => PetController.forceState('stand') },
+          { label: '🪑 坐',    action: () => PetController.forceState('sit') },
+          { label: '😴 趴下',  action: () => PetController.forceState('lie') },
+          { label: '💕 撒娇',  action: () => PetController.forceState('cute') },
+          { label: '🎲 随机',  action: () => PetController.forceState('random') },
+        ],
+      },
+      {
         label: `🐼 角色：${charLabel}`,
         sub: [
-          { label: '一二 🐼', action: () => PetController.setCharacter('yier') },
-          { label: '布布 🐻', action: () => PetController.setCharacter('bubu') },
-          { label: '自动切换 🔄', action: () => PetController.setCharacter('auto') },
+          { label: '一二 🐼', action: () => { PetController.setCharacter('yier'); hide(); } },
+          { label: '布布 🐻', action: () => { PetController.setCharacter('bubu'); hide(); } },
+          { label: '自动切换 🔄', action: () => { PetController.setCharacter('auto'); hide(); } },
         ],
       },
       {
@@ -98,7 +102,7 @@ const ContextMenu = (() => {
         },
       },
       {
-        label: '🚪 退出宠物',
+        label: '🚪 退出软件',
         action: () => {
           if (window.electronAPI) window.electronAPI.closeApp();
         },
@@ -108,76 +112,51 @@ const ContextMenu = (() => {
 
   function setPetMode(mode) {
     SettingsManager.save({ petMode: mode });
-    if (window.electronAPI) {
-      window.electronAPI.toggleSecondPet(mode === 'dual');
-    }
+    if (window.electronAPI) window.electronAPI.toggleSecondPet(mode === 'dual');
     hide();
   }
 
   function clearSubMenu() {
-    if (subMenuEl) {
-      subMenuEl.remove();
-      subMenuEl = null;
-    }
+    if (subMenuEl) { subMenuEl.remove(); subMenuEl = null; }
   }
 
   function renderSubMenu(subItems, parentRow) {
     clearSubMenu();
-
     subMenuEl = document.createElement('div');
-    subMenuEl.className = 'sub-menu';
     subMenuEl.style.cssText = `
       position: fixed;
-      background: rgba(255,255,255,0.96);
+      background: rgba(255,255,255,0.97);
       border: 1px solid #e0e0e0;
       border-radius: 10px;
-      padding: 6px 0;
-      min-width: 150px;
+      padding: 4px 0;
+      min-width: 140px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
       backdrop-filter: blur(10px);
       z-index: 10000;
       font-family: 'Microsoft YaHei', sans-serif;
+      font-size: 13px;
     `;
 
     subItems.forEach(item => {
       const row = document.createElement('div');
       row.textContent = item.label;
-      row.style.cssText = `
-        padding: 10px 18px;
-        cursor: pointer;
-        white-space: nowrap;
-        color: #333;
-        font-size: 14px;
-      `;
-      row.addEventListener('mouseenter', () => { row.style.background = '#f5f5f5'; });
+      row.style.cssText = 'padding:9px 16px;cursor:pointer;white-space:nowrap;color:#333;';
+      row.addEventListener('mouseenter', () => { row.style.background = '#fef0f3'; });
       row.addEventListener('mouseleave', () => { row.style.background = 'transparent'; });
-      row.addEventListener('click', (e) => {
-        e.stopPropagation();
-        item.action();
-      });
+      row.addEventListener('click', (e) => { e.stopPropagation(); item.action(); });
       subMenuEl.appendChild(row);
     });
 
-    // 计算位置 — 父菜单右侧
     const menuRect = getMenuEl().getBoundingClientRect();
     const parentRect = parentRow.getBoundingClientRect();
-
     let left = menuRect.right;
     let top = parentRect.top;
-
-    // 防止溢出右侧
-    if (left + 160 > window.innerWidth) {
-      left = menuRect.left - 160;
-    }
-    // 防止溢出底部
-    const subHeight = subItems.length * 40 + 12;
-    if (top + subHeight > window.innerHeight) {
-      top = window.innerHeight - subHeight - 10;
-    }
+    if (left + 150 > window.innerWidth) left = menuRect.left - 150;
+    const subH = subItems.length * 36 + 8;
+    if (top + subH > window.innerHeight) top = window.innerHeight - subH - 10;
 
     subMenuEl.style.left = left + 'px';
     subMenuEl.style.top = top + 'px';
-
     document.body.appendChild(subMenuEl);
   }
 
@@ -195,53 +174,39 @@ const ContextMenu = (() => {
       }
 
       const row = document.createElement('div');
-      row.style.cssText = `
-        padding: 10px 18px;
-        cursor: pointer;
-        white-space: nowrap;
-        color: #333;
-        font-size: 14px;
-        position: relative;
-      `;
+      row.style.cssText = 'padding:9px 16px;cursor:pointer;white-space:nowrap;color:#333;font-size:13px;position:relative;';
 
       if (item.sub) {
         row.textContent = item.label + '  ▸';
         row.addEventListener('mouseenter', () => {
-          row.style.background = '#f5f5f5';
+          row.style.background = '#fef0f3';
           renderSubMenu(item.sub, row);
         });
       } else {
         row.textContent = item.label;
         row.addEventListener('mouseenter', () => {
-          row.style.background = '#f5f5f5';
+          row.style.background = '#fef0f3';
           clearSubMenu();
         });
         row.addEventListener('click', (e) => {
           e.stopPropagation();
           if (item.action) item.action();
-          if (!item.sub) hide();
+          hide();
         });
       }
 
-      row.addEventListener('mouseleave', () => {
-        row.style.background = 'transparent';
-      });
-
+      row.addEventListener('mouseleave', () => { row.style.background = 'transparent'; });
       menu.appendChild(row);
     });
 
-    // 防止菜单溢出屏幕
-    const menuHeight = items.filter(i => !i.separator).length * 40 + 12;
-    const maxX = Math.max(0, window.innerWidth - 200);
-    const maxY = Math.max(0, window.innerHeight - menuHeight);
-    menu.style.left = Math.min(Math.max(0, x), maxX) + 'px';
-    menu.style.top = Math.min(Math.max(0, y), maxY) + 'px';
+    const menuH = items.filter(i => !i.separator).length * 36 + 8;
+    menu.style.left = Math.min(Math.max(0, x), window.innerWidth - 180) + 'px';
+    menu.style.top = Math.min(Math.max(0, y), window.innerHeight - menuH) + 'px';
     menu.style.display = 'block';
   }
 
   function show(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     renderMenu(buildMenuItems(), e.clientX, e.clientY);
   }
 
@@ -252,10 +217,9 @@ const ContextMenu = (() => {
   }
 
   function init() {
-    const petContainer = document.getElementById('pet-container');
-    petContainer.addEventListener('contextmenu', show);
+    document.getElementById('pet-container').addEventListener('contextmenu', show);
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('#context-menu') && !e.target.closest('.sub-menu')) {
+      if (!e.target.closest('#context-menu') && !e.target.closest('div[style*="fixed"]')) {
         hide();
       }
     });
@@ -267,8 +231,6 @@ const ContextMenu = (() => {
 // ===== 双宠互动 =====
 const PetInteraction = (() => {
   let cleanupPartnerListener = null;
-
-  // 互动对话库
   const exchanges = [
     { say: '一二：你在干嘛呀~', reply: '布布：在想你呀！' },
     { say: '一二：今天天气真好！', reply: '布布：那我们出去散步吧~' },
@@ -282,9 +244,7 @@ const PetInteraction = (() => {
     { say: '布布：开心吗今天？', reply: '一二：有布布在就很开心呀！' },
   ];
 
-  function getExchange() {
-    return exchanges[Math.floor(Math.random() * exchanges.length)];
-  }
+  function getExchange() { return exchanges[Math.floor(Math.random() * exchanges.length)]; }
 
   function startInteraction() {
     const settings = SettingsManager.load();
@@ -292,158 +252,58 @@ const PetInteraction = (() => {
 
     if (window.electronAPI && window.electronAPI.onPartnerSpeak) {
       cleanupPartnerListener = window.electronAPI.onPartnerSpeak((text) => {
-        const delay = 1500 + Math.random() * 3000;
-        setTimeout(() => {
-          BubbleSystem.show(text, 4000);
-        }, delay);
+        setTimeout(() => BubbleSystem.show(text, 4000), 1500 + Math.random() * 3000);
       });
     }
 
-    function scheduleExchange() {
-      const settings = SettingsManager.load();
-      if (settings.petMode !== 'dual') return;
-
-      const delay = (5 + Math.random() * 10) * 60 * 1000;
+    function schedule() {
+      if (SettingsManager.load().petMode !== 'dual') return;
       setTimeout(() => {
         const ex = getExchange();
-        const isFirstPet = PetController.getCurrentCharacter() === 'yier';
-
-        if (isFirstPet) {
+        if (PetController.getCurrentCharacter() === 'yier') {
           BubbleSystem.show(ex.say, 4000);
           if (window.electronAPI) window.electronAPI.petSpeak(ex.reply);
         }
-        scheduleExchange();
-      }, delay);
+        schedule();
+      }, (5 + Math.random() * 10) * 60 * 1000);
     }
-
-    setTimeout(scheduleExchange, 30000);
+    setTimeout(schedule, 30000);
   }
 
-  function init() {
-    setTimeout(startInteraction, 5000);
-  }
-
+  function init() { setTimeout(startInteraction, 5000); }
   return { init, getExchange };
 })();
 
-// ===== 初始化所有系统 =====
+// ===== 启动 =====
 document.addEventListener('DOMContentLoaded', () => {
   SettingsManager.load();
+  WeatherSystem.init();
   PetController.init();
   BubbleSystem.init();
 
   const petContainer = document.getElementById('pet-container');
   let clickTimer = null;
 
-  // 单击/双击判断
   petContainer.addEventListener('click', (e) => {
-    if (DragSystem.didDrag()) {
-      DragSystem.resetDrag();
-      return;
-    }
+    if (DragSystem.didDrag()) { DragSystem.resetDrag(); return; }
     if (e.button !== 0) return;
 
     if (clickTimer) {
-      // 双击 — 打开快捷操作
+      // 双击 → 切换角色
       clearTimeout(clickTimer);
       clickTimer = null;
-      showQuickActions(e);
+      const curChar = PetController.getCurrentCharacter();
+      const nextChar = curChar === 'yier' ? 'bubu' : 'yier';
+      PetController.setCharacter(nextChar);
+      BubbleSystem.show(nextChar === 'yier' ? '一二来啦！🐼' : '布布来啦！🐻', 2500);
     } else {
-      // 等待判断是单击还是双击
       clickTimer = setTimeout(() => {
         clickTimer = null;
-        // 单击 — 随机冒泡
+        // 单击 → 随机冒泡
         BubbleSystem.show(QuotesDB.getRandomTip(), 3000);
       }, 300);
     }
   });
-
-  // 快捷操作面板
-  function showQuickActions(e) {
-    const settings = SettingsManager.load();
-    const actions = [
-      {
-        label: settings.petMode === 'dual' ? '👥 切换单宠' : '💕 开启双宠',
-        action: () => {
-          const newMode = settings.petMode === 'dual' ? 'single' : 'dual';
-          SettingsManager.save({ petMode: newMode });
-          if (window.electronAPI) window.electronAPI.toggleSecondPet(newMode === 'dual');
-          BubbleSystem.show(newMode === 'dual' ? '一二布布一起来啦！💕' : '切换为单宠模式~', 3000);
-        },
-      },
-      {
-        label: PetController.getCurrentCharacter() === 'yier' ? '🐻 切成布布' : '🐼 切成一二',
-        action: () => {
-          const newChar = PetController.getCurrentCharacter() === 'yier' ? 'bubu' : 'yier';
-          PetController.setCharacter(newChar);
-          BubbleSystem.show(newChar === 'yier' ? '一二来啦！🐼' : '布布来啦！🐻', 3000);
-        },
-      },
-      {
-        label: '⚙️ 设置面板',
-        action: () => {
-          if (window.electronAPI) window.electronAPI.openSettings();
-        },
-      },
-    ];
-
-    // 创建快捷操作浮层
-    const existing = document.querySelector('.quick-actions-panel');
-    if (existing) existing.remove();
-
-    const panel = document.createElement('div');
-    panel.className = 'quick-actions-panel';
-    panel.style.cssText = `
-      position: fixed;
-      background: rgba(255,255,255,0.95);
-      border: 1px solid #e0e0e0;
-      border-radius: 12px;
-      padding: 4px 0;
-      min-width: 160px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      z-index: 9998;
-      font-size: 14px;
-      font-family: 'Microsoft YaHei', sans-serif;
-      backdrop-filter: blur(10px);
-    `;
-
-    actions.forEach((a, i) => {
-      const row = document.createElement('div');
-      row.textContent = a.label;
-      row.style.cssText = `
-        padding: 10px 16px;
-        cursor: pointer;
-        white-space: nowrap;
-        color: #333;
-        transition: background 0.15s;
-      `;
-      row.addEventListener('mouseenter', () => { row.style.background = '#fef0f3'; });
-      row.addEventListener('mouseleave', () => { row.style.background = 'transparent'; });
-      row.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        a.action();
-        panel.remove();
-      });
-      panel.appendChild(row);
-    });
-
-    // 位置计算
-    const maxX = window.innerWidth - 170;
-    const maxY = window.innerHeight - (actions.length * 40 + 20);
-    panel.style.left = Math.min(e.clientX, maxX) + 'px';
-    panel.style.top = Math.min(e.clientY, maxY) + 'px';
-
-    document.body.appendChild(panel);
-
-    // 点击其他地方关闭
-    const closePanel = (ev) => {
-      if (!panel.contains(ev.target)) {
-        panel.remove();
-        document.removeEventListener('click', closePanel);
-      }
-    };
-    setTimeout(() => document.addEventListener('click', closePanel), 100);
-  }
 
   DragSystem.init();
   ContextMenu.init();

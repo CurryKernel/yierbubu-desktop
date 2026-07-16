@@ -36,8 +36,8 @@ let secondWindow = null;
 let settingsWindow = null;
 
 const PET_WINDOW_CONFIG = {
-  width: 250,
-  height: 300,
+  width: 200,
+  height: 240,
   transparent: true,
   alwaysOnTop: true,
   frame: false,

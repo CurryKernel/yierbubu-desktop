@@ -149,5 +149,17 @@ const PetController = (() => {
   function getCurrentState() { return currentState; }
   function getIsAutoCharacter() { return isAutoCharacter; }
 
-  return { init, setCharacter, getCurrentCharacter, getCurrentState, getIsAutoCharacter };
+  // 手动强制切换状态（右键菜单用）
+  function forceState(state) {
+    if (state === 'random') {
+      currentState = getRandomState();
+    } else if (STATES.includes(state)) {
+      currentState = state;
+    }
+    updatePetImage(currentCharacter, currentState);
+    // 重置定时器
+    scheduleNextState();
+  }
+
+  return { init, setCharacter, forceState, getCurrentCharacter, getCurrentState, getIsAutoCharacter };
 })();
