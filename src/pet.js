@@ -11,10 +11,6 @@ const PetController = (() => {
   const petGif = document.getElementById('pet-gif');
   let lastGifPath = '';
 
-  function getRandomInterval(minSec, maxSec) {
-    return Math.floor((minSec + Math.random() * (maxSec - minSec)) * 1000);
-  }
-
   function getStateInterval() {
     return (3 + Math.random() * 5) * 60 * 1000;
   }
@@ -30,14 +26,12 @@ const PetController = (() => {
     return otherStates[Math.floor(Math.random() * otherStates.length)];
   }
 
-  // 获取角色的基础形象（character.png — 一二白色熊猫 / 布布棕色熊）
   function getCharacterBase(character) {
     return `assets/${character}/character.png`;
   }
 
-  // 随机选GIF
+  // 从所有状态中随机选一张GIF
   function getRandomGif(character) {
-    // 从所有状态中随机选一张GIF
     const allGifs = [];
     STATES.forEach(state => {
       const files = GIFManifest[character] && GIFManifest[character][state];
@@ -46,54 +40,49 @@ const PetController = (() => {
     if (allGifs.length === 0) return null;
 
     let idx = Math.floor(Math.random() * allGifs.length);
-    let gifPath = `assets/${character}/${allGifs[idx].state}/${allGifs[idx].file}`;
-
+    const gifPath = `assets/${character}/${allGifs[idx].state}/${allGifs[idx].file}`;
     if (gifPath === lastGifPath && allGifs.length > 1) {
       idx = (idx + 1) % allGifs.length;
-      gifPath = `assets/${character}/${allGifs[idx].state}/${allGifs[idx].file}`;
+      return { path: `assets/${character}/${allGifs[idx].state}/${allGifs[idx].file}`, state: allGifs[idx].state };
     }
     return { path: gifPath, state: allGifs[idx].state };
   }
 
   function updatePetImage(character, state, animate = true) {
-    // 先显示角色基础形象确保视觉区分
     const baseImg = getCharacterBase(character);
-
-    // 尝试加载GIF
     const files = GIFManifest[character] && GIFManifest[character][state];
     let useGif = null;
     if (files && files.length > 0) {
       const idx = Math.floor(Math.random() * files.length);
-      let gifPath = `assets/${character}/${state}/${files[idx]}`;
-      if (gifPath === lastGifPath && files.length > 1) {
-        const idx2 = (idx + 1) % files.length;
-        gifPath = `assets/${character}/${state}/${files[idx2]}`;
-      }
-      useGif = gifPath;
+      const gifPath = `assets/${character}/${state}/${files[idx]}`;
+      useGif = (gifPath === lastGifPath && files.length > 1)
+        ? `assets/${character}/${state}/${files[(idx + 1) % files.length]}`
+        : gifPath;
     }
 
-    // 先显示基础形象
-    if (animate) {
-      petGif.style.opacity = '0.3';
-      petGif.style.transform = 'scale(0.9)';
-    }
-
-    // 设置GIF（如果加载失败，自动回退到 character.png）
     const targetSrc = useGif || baseImg;
     lastGifPath = targetSrc;
+    let fallbackUsed = false;
+
+    if (animate) {
+      petGif.style.opacity = '0.3';
+      petGif.style.transform = 'scale(0.85)';
+    }
 
     petGif.onerror = () => {
-      if (petGif.src !== baseImg) {
+      if (!fallbackUsed && targetSrc !== baseImg && petGif.src !== baseImg) {
+        fallbackUsed = true;
         petGif.src = baseImg;
+        // 关键修复：回退到基础图后也要恢复透明度
+        petGif.style.opacity = '1';
+        petGif.style.transform = 'scale(1)';
         petGif.onerror = null;
       }
     };
 
     petGif.onload = () => {
-      if (animate) {
-        petGif.style.opacity = '1';
-        petGif.style.transform = 'scale(1)';
-      }
+      petGif.style.opacity = '1';
+      petGif.style.transform = 'scale(1)';
     };
 
     petGif.src = targetSrc;
@@ -122,8 +111,7 @@ const PetController = (() => {
 
   function switchCharacter() {
     if (!isAutoCharacter) return;
-    const idx = CHARACTERS.indexOf(currentCharacter);
-    const nextChar = CHARACTERS[(idx + 1) % CHARACTERS.length];
+    const nextChar = CHARACTERS[(CHARACTERS.indexOf(currentCharacter) + 1) % CHARACTERS.length];
     setCharacterInternal(nextChar);
     scheduleNextCharacter();
   }
@@ -146,7 +134,6 @@ const PetController = (() => {
     setCharacterInternal(char);
   }
 
-  // 换一个图案（从所有状态中随机选）
   function nextImage() {
     const gif = getRandomGif(currentCharacter);
     if (gif) {
@@ -157,20 +144,23 @@ const PetController = (() => {
   function init() {
     const settings = SettingsManager.load();
 
-    if (settings.character === 'auto') {
-      isAutoCharacter = true;
-      currentCharacter = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
-    } else {
-      isAutoCharacter = false;
-      currentCharacter = settings.character;
-    }
+    isAutoCharacter = settings.character === 'auto';
+    currentCharacter = isAutoCharacter
+      ? CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]
+      : settings.character;
 
-    // 首次加载：显示角色基础形象，然后尝试GIF
+    // 先显示基础角色图，带 onerror 兜底
     const baseImg = getCharacterBase(currentCharacter);
+    petGif.onerror = () => {
+      // 基础图也加载失败，隐藏图片
+      petGif.style.display = 'none';
+    };
+    petGif.onload = () => {
+      petGif.style.display = 'block';
+    };
     petGif.src = baseImg;
-    petGif.onerror = null;
 
-    // 延迟加载GIF以替换基础形象
+    // 500ms后尝试加载GIF
     setTimeout(() => {
       currentState = getRandomState();
       updatePetImage(currentCharacter, currentState, false);
