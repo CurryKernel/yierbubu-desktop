@@ -118,35 +118,45 @@ const TimeDisplay = (() => {
 const PetInteraction = (() => {
   const exchanges = [
     { say:'一二：在干嘛呀~', reply:'布布：在想你呀！' },
-    { say:'一二：今天天气真好！', reply:'布布：出去散步吧~' },
-    { say:'一二：饿啦！', reply:'布布：给你做好吃的！' },
-    { say:'一二：好无聊...', reply:'布布：我陪你聊天呀~' },
-    { say:'布布：累不累？', reply:'一二：看到你就不累啦！' },
-    { say:'布布：休息一下哦~', reply:'一二：好哒听你的！' },
-    { say:'一二：工作好辛苦', reply:'布布：辛苦啦抱抱~' },
-    { say:'布布：喝点水吧~', reply:'一二：谢谢提醒💧' },
-    { say:'一二：布布最好了！', reply:'布布：一二也最棒！' },
-    { say:'布布：开心吗？', reply:'一二：有你在就很开心！' },
+    { say:'布布：累不累呀？', reply:'一二：看到你就不累啦！' },
+    { say:'一二：饿啦！', reply:'布布：我去给你做好吃的！' },
+    { say:'布布：休息一下哦~', reply:'一二：好哒，听你的！' },
+    { say:'一二：今天天气真好！', reply:'布布：那我们出去散步吧~' },
+    { say:'布布：喝点水吧~', reply:'一二：谢谢布布提醒！💧' },
+    { say:'一二：工作好辛苦~', reply:'布布：辛苦啦，抱抱！' },
+    { say:'布布：开心吗今天？', reply:'一二：有布布在就很开心呀！' },
+    { say:'一二：布布最好了！', reply:'布布：一二也是最棒的！' },
+    { say:'布布：好无聊哦...', reply:'一二：那我陪你聊天呀~' },
   ];
+
+  let partnerListenerCleanup = null;
+
   function start() {
     const s = SettingsManager.load();
     if (s.petMode !== 'dual') return;
-    window.electronAPI && window.electronAPI.onPartnerSpeak && window.electronAPI.onPartnerSpeak((text) => {
-      setTimeout(() => BubbleSystem.show(text, 4000), 1500 + Math.random() * 3000);
-    });
+
+    // 监听伙伴消息
+    if (window.electronAPI && window.electronAPI.onPartnerSpeak) {
+      if (partnerListenerCleanup) partnerListenerCleanup();
+      partnerListenerCleanup = window.electronAPI.onPartnerSpeak((text) => {
+        setTimeout(() => BubbleSystem.show(text, 4000), 1500 + Math.random() * 3000);
+      });
+    }
+
     function schedule() {
       if (SettingsManager.load().petMode !== 'dual') return;
+      const delay = (2 + Math.random() * 4) * 60 * 1000; // 2-6分钟
       setTimeout(() => {
         const ex = exchanges[Math.floor(Math.random() * exchanges.length)];
-        if (PetController.getCurrentCharacter() === 'yier') {
-          BubbleSystem.show(ex.say, 4000);
-          window.electronAPI && window.electronAPI.petSpeak(ex.reply);
-        }
+        BubbleSystem.show(ex.say, 4000);
+        window.electronAPI && window.electronAPI.petSpeak(ex.reply);
         schedule();
-      }, (5 + Math.random() * 10) * 60 * 1000);
+      }, delay);
     }
-    setTimeout(schedule, 30000);
+    // 首次对话：10秒后
+    setTimeout(schedule, 10000);
   }
+
   function init() { setTimeout(start, 5000); }
   return { init };
 })();
