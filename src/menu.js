@@ -26,100 +26,48 @@ const DragSystem = (() => {
   return { init, didDrag, resetDrag };
 })();
 
-// ===== 右键菜单（全扁平，无子菜单）=====
+// ===== 右键菜单（通过IPC调原生系统菜单）=====
 const ContextMenu = (() => {
-  function getMenuEl() { return document.getElementById('context-menu'); }
-
-  function buildItems() {
-    const s = SettingsManager.load();
-    return [
-      { label: '🖼️ 换一个图案', action: () => { PetController.nextImage(); } },
-      { label: s.petMode === 'dual' ? '👤 切换为单宠' : '👥 切换为双宠',
-        action: () => {
+  function init() {
+    // 监听主进程发来的菜单动作
+    window.electronAPI && window.electronAPI.onMenuAction && window.electronAPI.onMenuAction((action) => {
+      switch (action) {
+        case 'next-image': PetController.nextImage(); break;
+        case 'toggle-dual':
+          const s = SettingsManager.load();
           const mode = s.petMode === 'dual' ? 'single' : 'dual';
           SettingsManager.save({ petMode: mode });
           window.electronAPI && window.electronAPI.toggleSecondPet(mode === 'dual');
-        }},
-      { label: s.tipsEnabled ? '💬 提示语：开 ✓' : '💬 提示语：关 ✗',
-        action: () => {
-          SettingsManager.save({ tipsEnabled: !s.tipsEnabled });
+          break;
+        case 'toggle-tips':
+          SettingsManager.save({ tipsEnabled: !SettingsManager.get('tipsEnabled') });
           BubbleSystem.refresh();
-        }},
-      { label: s.waterReminderEnabled ? '💧 喝水提醒：开 ✓' : '💧 喝水提醒：关 ✗',
-        action: () => {
-          SettingsManager.save({ waterReminderEnabled: !s.waterReminderEnabled });
+          break;
+        case 'toggle-water':
+          SettingsManager.save({ waterReminderEnabled: !SettingsManager.get('waterReminderEnabled') });
           BubbleSystem.refresh();
-        }},
-      { sep: true },
-      { label: '⚙️ 设置面板', action: () => { window.electronAPI && window.electronAPI.openSettings(); } },
-      { label: '🚪 退出软件', action: () => { window.electronAPI && window.electronAPI.closeApp(); } },
-    ];
-  }
-
-  function show(e) {
-    e.preventDefault(); e.stopPropagation();
-    const menu = getMenuEl();
-    // 如果菜单已打开，右键再次点击关闭
-    if (menu.style.display === 'block') {
-      hide();
-      return;
-    }
-    // 关闭设置窗口
-    window.electronAPI && window.electronAPI.closeSettings && window.electronAPI.closeSettings();
-
-    const items = buildItems();
-    menu.innerHTML = '';
-
-    items.forEach(item => {
-      if (item.sep) {
-        const d = document.createElement('div');
-        d.style.cssText = 'height:1px;background:#eee;margin:4px 0;';
-        menu.appendChild(d);
-        return;
-      }
-      const row = document.createElement('div');
-      row.textContent = item.label;
-      row.style.cssText = 'padding:10px 16px;cursor:pointer;white-space:nowrap;color:#333;font-size:13px;';
-      row.addEventListener('mouseenter', () => row.style.background = '#fef0f3');
-      row.addEventListener('mouseleave', () => row.style.background = 'transparent');
-      row.addEventListener('click', (ev) => { ev.stopPropagation(); item.action(); hide(); });
-      menu.appendChild(row);
-    });
-
-    // 菜单位置：放在宠物右侧，不遮挡宠物
-    const petRect = document.getElementById('pet-container').getBoundingClientRect();
-    const menuH = items.filter(i => !i.sep).length * 38 + 8;
-    let left = petRect.right + 4;
-    let top = petRect.top;
-    // 如果右侧空间不够，放左侧
-    if (left + 180 > window.innerWidth) left = petRect.left - 184;
-    // 如果上下溢出就调整
-    if (top + menuH > window.innerHeight) top = window.innerHeight - menuH - 4;
-    if (top < 0) top = 0;
-
-    menu.style.left = left + 'px';
-    menu.style.top = top + 'px';
-    menu.style.display = 'block';
-  }
-
-  function hide() { const m = getMenuEl(); if (m) m.style.display = 'none'; }
-
-  function init() {
-    const petContainer = document.getElementById('pet-container');
-    petContainer.addEventListener('contextmenu', show);
-    // 点击窗口任何地方（除了菜单）关闭菜单
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#context-menu')) hide();
-    });
-    // 右键点击窗口任何地方也关闭菜单（如果菜单已打开）
-    document.addEventListener('contextmenu', (e) => {
-      if (e.target.closest('#context-menu')) return;
-      if (getMenuEl().style.display === 'block') {
-        hide();
+          break;
+        case 'open-settings':
+          window.electronAPI && window.electronAPI.openSettings();
+          break;
+        case 'quit':
+          window.electronAPI && window.electronAPI.closeApp();
+          break;
       }
     });
+
+    document.getElementById('pet-container').addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      window.electronAPI && window.electronAPI.closeSettings();
+      const s = SettingsManager.load();
+      window.electronAPI && window.electronAPI.showContextMenu({
+        tipsEnabled: s.tipsEnabled,
+        waterReminderEnabled: s.waterReminderEnabled,
+        petMode: s.petMode,
+      });
+    });
   }
-  return { init, show, hide };
+  return { init };
 })();
 
 // ===== 时间显示 =====
@@ -155,31 +103,28 @@ const PetInteraction = (() => {
     { say:'布布：好无聊哦...', reply:'一二：那我陪你聊天呀~' },
   ];
 
-  let partnerListenerCleanup = null;
+  let cleanup = null;
 
   function start() {
     const s = SettingsManager.load();
     if (s.petMode !== 'dual') return;
 
-    // 监听伙伴消息
     if (window.electronAPI && window.electronAPI.onPartnerSpeak) {
-      if (partnerListenerCleanup) partnerListenerCleanup();
-      partnerListenerCleanup = window.electronAPI.onPartnerSpeak((text) => {
+      if (cleanup) cleanup();
+      cleanup = window.electronAPI.onPartnerSpeak((text) => {
         setTimeout(() => BubbleSystem.show(text, 4000), 1500 + Math.random() * 3000);
       });
     }
 
     function schedule() {
       if (SettingsManager.load().petMode !== 'dual') return;
-      const delay = (2 + Math.random() * 4) * 60 * 1000; // 2-6分钟
       setTimeout(() => {
         const ex = exchanges[Math.floor(Math.random() * exchanges.length)];
         BubbleSystem.show(ex.say, 4000);
         window.electronAPI && window.electronAPI.petSpeak(ex.reply);
         schedule();
-      }, delay);
+      }, (2 + Math.random() * 4) * 60 * 1000);
     }
-    // 首次对话：10秒后
     setTimeout(schedule, 10000);
   }
 
@@ -195,24 +140,19 @@ document.addEventListener('DOMContentLoaded', () => {
   BubbleSystem.init();
 
   const c = document.getElementById('pet-container');
-
   let clickTimer = null;
 
-  // 单击/双击判断
   c.addEventListener('click', (e) => {
     if (DragSystem.didDrag()) { DragSystem.resetDrag(); return; }
     if (e.button !== 0) return;
 
     if (clickTimer) {
-      // 双击 → 换一个图案
-      clearTimeout(clickTimer);
-      clickTimer = null;
+      clearTimeout(clickTimer); clickTimer = null;
       PetController.nextImage();
       BubbleSystem.show('换个造型~', 2000);
     } else {
       clickTimer = setTimeout(() => {
         clickTimer = null;
-        // 单击 → 随机冒泡
         BubbleSystem.show(QuotesDB.getRandomTip(), 3000);
       }, 300);
     }

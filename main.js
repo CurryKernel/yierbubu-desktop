@@ -107,6 +107,32 @@ function setupIPC() {
     }
   });
 
+  // 原生右键菜单
+  ipcMain.handle('show-context-menu', (event, settings) => {
+    const { Menu } = require('electron');
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const template = [
+      { label: '🖼️ 换一个图案', click: () => win.webContents.send('menu-action', 'next-image') },
+      {
+        label: settings.petMode === 'dual' ? '👤 切换为单宠' : '👥 切换为双宠',
+        click: () => win.webContents.send('menu-action', 'toggle-dual'),
+      },
+      {
+        label: settings.tipsEnabled ? '💬 提示语：开 ✓' : '💬 提示语：关 ✗',
+        click: () => win.webContents.send('menu-action', 'toggle-tips'),
+      },
+      {
+        label: settings.waterReminderEnabled ? '💧 喝水提醒：开 ✓' : '💧 喝水提醒：关 ✗',
+        click: () => win.webContents.send('menu-action', 'toggle-water'),
+      },
+      { type: 'separator' },
+      { label: '⚙️ 设置面板', click: () => win.webContents.send('menu-action', 'open-settings') },
+      { label: '🚪 退出软件', click: () => win.webContents.send('menu-action', 'quit') },
+    ];
+    const menu = Menu.buildFromTemplate(template);
+    menu.popup({ window: win });
+  });
+
   ipcMain.handle('toggle-second-pet', (event, enable) => {
     if (enable && !secondWindow) {
       secondWindow = createPetWindow({

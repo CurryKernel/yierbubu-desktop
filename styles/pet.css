@@ -121,18 +121,3 @@ html, body {
 .pet-size-medium #pet-container { width: 140px; height: 140px; }
 .pet-size-large #pet-container { width: 180px; height: 180px; }
 
-/* === 右键菜单 === */
-#context-menu {
-  position: fixed;
-  background: rgba(255,255,255,0.96);
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  padding: 4px 0;
-  min-width: 160px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  z-index: 9999;
-  display: none;
-  font-size: 13px;
-  backdrop-filter: blur(10px);
-  font-family: 'Microsoft YaHei', sans-serif;
-}
