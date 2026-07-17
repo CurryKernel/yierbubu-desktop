@@ -59,13 +59,14 @@ const ContextMenu = (() => {
   function show(e) {
     e.preventDefault(); e.stopPropagation();
     const menu = getMenuEl();
-    // 如果菜单已打开，右键再次点击关闭菜单
+    // 如果菜单已打开，右键再次点击关闭
     if (menu.style.display === 'block') {
       hide();
       return;
     }
-    // 右键时自动关闭已打开的设置窗口
+    // 关闭设置窗口
     window.electronAPI && window.electronAPI.closeSettings && window.electronAPI.closeSettings();
+
     const items = buildItems();
     menu.innerHTML = '';
 
@@ -85,19 +86,37 @@ const ContextMenu = (() => {
       menu.appendChild(row);
     });
 
-    // 防止溢出屏幕
+    // 菜单位置：放在宠物右侧，不遮挡宠物
+    const petRect = document.getElementById('pet-container').getBoundingClientRect();
     const menuH = items.filter(i => !i.sep).length * 38 + 8;
-    menu.style.left = Math.min(Math.max(0, e.clientX), window.innerWidth - 180) + 'px';
-    menu.style.top = Math.min(Math.max(0, e.clientY), window.innerHeight - menuH) + 'px';
+    let left = petRect.right + 4;
+    let top = petRect.top;
+    // 如果右侧空间不够，放左侧
+    if (left + 180 > window.innerWidth) left = petRect.left - 184;
+    // 如果上下溢出就调整
+    if (top + menuH > window.innerHeight) top = window.innerHeight - menuH - 4;
+    if (top < 0) top = 0;
+
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
     menu.style.display = 'block';
   }
 
   function hide() { const m = getMenuEl(); if (m) m.style.display = 'none'; }
 
   function init() {
-    document.getElementById('pet-container').addEventListener('contextmenu', show);
+    const petContainer = document.getElementById('pet-container');
+    petContainer.addEventListener('contextmenu', show);
+    // 点击窗口任何地方（除了菜单）关闭菜单
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#context-menu')) hide();
+    });
+    // 右键点击窗口任何地方也关闭菜单（如果菜单已打开）
+    document.addEventListener('contextmenu', (e) => {
+      if (e.target.closest('#context-menu')) return;
+      if (getMenuEl().style.display === 'block') {
+        hide();
+      }
     });
   }
   return { init, show, hide };
