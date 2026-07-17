@@ -89,7 +89,7 @@ function setupIPC() {
       resizable: true,
       title: '一二布布 - 设置',
       alwaysOnTop: false,
-      parent: undefined,
+      skipTaskbar: false,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         contextIsolation: true,

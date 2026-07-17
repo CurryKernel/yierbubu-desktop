@@ -58,9 +58,14 @@ const ContextMenu = (() => {
 
   function show(e) {
     e.preventDefault(); e.stopPropagation();
+    const menu = getMenuEl();
+    // 如果菜单已打开，右键再次点击关闭菜单
+    if (menu.style.display === 'block') {
+      hide();
+      return;
+    }
     // 右键时自动关闭已打开的设置窗口
     window.electronAPI && window.electronAPI.closeSettings && window.electronAPI.closeSettings();
-    const menu = getMenuEl();
     const items = buildItems();
     menu.innerHTML = '';
 
