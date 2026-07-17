@@ -155,9 +155,46 @@ function setupIPC() {
   });
 }
 
+// ===== 自动更新 =====
+const { autoUpdater } = require('electron-updater');
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+function checkForUpdates() {
+  autoUpdater.checkForUpdatesAndNotify().catch(() => {
+    // 静默失败，不影响使用
+  });
+}
+
+autoUpdater.on('update-available', () => {
+  // 有更新可用，通知用户
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.executeJavaScript(`
+      if (typeof BubbleSystem !== 'undefined') {
+        BubbleSystem.show('🔔 发现新版本！正在后台下载...', 5000);
+      }
+    `);
+  }
+});
+
+autoUpdater.on('update-downloaded', () => {
+  // 下载完成，通知用户重启
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.executeJavaScript(`
+      if (typeof BubbleSystem !== 'undefined') {
+        BubbleSystem.show('✅ 新版本已下载！重启后生效~', 6000);
+      }
+    `);
+  }
+});
+
 app.whenReady().then(() => {
   setupIPC();
   mainWindow = createPetWindow();
+  // 启动后 5 秒检查更新
+  setTimeout(checkForUpdates, 5000);
+  // 每 6 小时检查一次
+  setInterval(checkForUpdates, 6 * 60 * 60 * 1000);
 });
 
 app.on('window-all-closed', () => {

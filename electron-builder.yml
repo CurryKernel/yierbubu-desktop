@@ -1,5 +1,9 @@
 appId: com.yierbubu.desktop-pet
 productName: "一二布布桌面宠物"
+publish:
+  provider: github
+  owner: CurryKernel
+  repo: yierbubu-desktop
 directories:
   output: dist
   buildResources: build
