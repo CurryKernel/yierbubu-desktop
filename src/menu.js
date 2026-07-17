@@ -58,6 +58,8 @@ const ContextMenu = (() => {
 
   function show(e) {
     e.preventDefault(); e.stopPropagation();
+    // 右键时自动关闭已打开的设置窗口
+    window.electronAPI && window.electronAPI.closeSettings && window.electronAPI.closeSettings();
     const menu = getMenuEl();
     const items = buildItems();
     menu.innerHTML = '';
@@ -110,7 +112,7 @@ const TimeDisplay = (() => {
       setTimeout(() => BubbleSystem.show(msgs[h] || `一二布布报时：${h}点整~`, 5000), 500);
     }
   }
-  function init() { update(); setInterval(update, 60000); }
+  function init() { update(); setInterval(update, 1000); }
   return { init };
 })();
 

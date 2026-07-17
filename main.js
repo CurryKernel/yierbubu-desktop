@@ -79,7 +79,7 @@ function setupIPC() {
   });
 
   ipcMain.handle('open-settings', () => {
-    if (settingsWindow) {
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
       settingsWindow.focus();
       return;
     }
@@ -88,6 +88,8 @@ function setupIPC() {
       height: 680,
       resizable: true,
       title: '一二布布 - 设置',
+      alwaysOnTop: false,
+      parent: undefined,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         contextIsolation: true,
@@ -96,6 +98,13 @@ function setupIPC() {
     });
     settingsWindow.loadFile('settings.html');
     settingsWindow.on('closed', () => { settingsWindow = null; });
+  });
+
+  ipcMain.handle('close-settings', () => {
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.close();
+      settingsWindow = null;
+    }
   });
 
   ipcMain.handle('toggle-second-pet', (event, enable) => {
